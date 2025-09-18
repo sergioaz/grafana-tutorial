@@ -6,13 +6,13 @@ Provides HTTP endpoint with metrics for Grafana monitoring
 
 import json
 import time
-import threading
+# import threading
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict, deque
-import re
+# import re
 import signal
 import sys
 

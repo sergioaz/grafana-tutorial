@@ -1,5 +1,6 @@
 groups:
   - name: etl_alerts
+    folder: ETL Monitoring
     interval: 30s
     rules:
       - uid: etl_health_down
@@ -11,6 +12,7 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
+            datasourceUid: prometheus
             model:
               expr: etl_health_status
               interval: ''
@@ -35,6 +37,7 @@ groups:
             relativeTimeRange:
               from: 600
               to: 0
+            datasourceUid: prometheus
             model:
               expr: etl_seconds_since_last_success
               interval: ''
@@ -59,6 +62,7 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
+            datasourceUid: prometheus
             model:
               expr: increase(etl_failures_total[5m])
               interval: ''
@@ -83,6 +87,7 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
+            datasourceUid: prometheus
             model:
               expr: rate(etl_records_total[5m]) * 60
               interval: ''
@@ -107,6 +112,7 @@ groups:
             relativeTimeRange:
               from: 300
               to: 0
+            datasourceUid: prometheus
             model:
               expr: etl_avg_processing_time_seconds
               interval: ''
@@ -131,6 +137,7 @@ groups:
             relativeTimeRange:
               from: 120
               to: 0
+            datasourceUid: prometheus
             model:
               expr: up{job="etl_metrics"}
               interval: ''
