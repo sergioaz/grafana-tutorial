@@ -1,0 +1,2 @@
+# Basic requirements for ETL simulator and metrics exporter
+# No external dependencies needed - using only standard library

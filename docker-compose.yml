@@ -1,10 +1,10 @@
-version: "3"
 
 networks:
   grafana:
 
 volumes:
   app_data: {}
+  etl_logs: {}
 
 services:
   prometheus:
@@ -48,6 +48,8 @@ services:
       - GF_AUTH_BASIC_ENABLED=false # removes login 2/2
     volumes:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/provisioning/alerting:/etc/grafana/provisioning/alerting
 
   app:
     build: ./app
@@ -64,3 +66,49 @@ services:
       - 8082:80
     networks:
       - grafana
+
+  etl-simulator:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile.etl
+    container_name: etl-simulator
+    networks:
+      - grafana
+    volumes:
+      - etl_logs:/app/logs
+    working_dir: /app
+    command: python3 etl_simulator.py
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_FILE=/app/logs/etl_process.log
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import os; exit(0 if os.path.exists('/app/logs/etl_process.log') else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  etl-metrics:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile.etl
+    container_name: etl-metrics
+    networks:
+      - grafana
+    ports:
+      - "8083:8083"
+    volumes:
+      - etl_logs:/app/logs
+    working_dir: /app
+    command: python3 metrics_exporter.py
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_FILE=/app/logs/etl_process.log
+    depends_on:
+      - etl-simulator
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

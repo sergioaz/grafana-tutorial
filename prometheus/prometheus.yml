@@ -14,3 +14,11 @@ scrape_configs:
 
     static_configs:
       - targets: ["app:80"]
+
+  - job_name: "etl_metrics"
+
+    # ETL process monitoring
+    scrape_interval: 10s
+
+    static_configs:
+      - targets: ["etl-metrics:8083"]

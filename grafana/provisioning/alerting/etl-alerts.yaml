@@ -1,0 +1,147 @@
+groups:
+  - name: etl_alerts
+    interval: 30s
+    rules:
+      - uid: etl_health_down
+        title: ETL Process Health Check Failed
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: etl_health_status
+              interval: ''
+              refId: A
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          summary: ETL process health check is failing
+          description: 'The ETL process health status has been 0 (down) for more than 2 minutes. This indicates the ETL process may have stopped or is not processing files.'
+        labels:
+          severity: critical
+          team: data-engineering
+          service: etl
+
+      - uid: etl_no_success_10min
+        title: No ETL Success in 10 Minutes
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              expr: etl_seconds_since_last_success
+              interval: ''
+              refId: A
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          summary: No successful ETL file processing in over 10 minutes
+          description: 'It has been {{ $value }} seconds since the last successful file processing. Expected frequency is approximately every 1-5 minutes.'
+        labels:
+          severity: warning
+          team: data-engineering
+          service: etl
+
+      - uid: etl_high_failure_rate
+        title: High ETL Failure Rate
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: increase(etl_failures_total[5m])
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          summary: High ETL failure rate detected
+          description: 'ETL process has had {{ $value }} failures in the last 5 minutes. Normal rate is approximately 1 failure per minute.'
+        labels:
+          severity: warning
+          team: data-engineering
+          service: etl
+
+      - uid: etl_low_throughput
+        title: ETL Processing Rate Below Threshold
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: rate(etl_records_total[5m]) * 60
+              interval: ''
+              refId: A
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 3m
+        annotations:
+          summary: ETL processing rate is below expected threshold
+          description: 'Current ETL processing rate is {{ $value }} records per minute. Expected rate is approximately 600 records per minute (10 records/sec).'
+        labels:
+          severity: warning
+          team: data-engineering
+          service: etl
+
+      - uid: etl_excessive_processing_time
+        title: ETL Average Processing Time Too High
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: etl_avg_processing_time_seconds
+              interval: ''
+              refId: A
+        noDataState: NoData
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          summary: ETL average processing time is unusually high
+          description: 'Current average processing time is {{ $value }} seconds per file. This may indicate performance issues or larger than normal files.'
+        labels:
+          severity: warning
+          team: data-engineering
+          service: etl
+
+      - uid: etl_metrics_endpoint_down
+        title: ETL Metrics Endpoint Unavailable
+        condition: A
+        data:
+          - refId: A
+            queryType: ''
+            relativeTimeRange:
+              from: 120
+              to: 0
+            model:
+              expr: up{job="etl_metrics"}
+              interval: ''
+              refId: A
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          summary: ETL metrics endpoint is not responding
+          description: 'The ETL metrics exporter endpoint is down or unreachable. This will prevent monitoring of the ETL process.'
+        labels:
+          severity: critical
+          team: data-engineering
+          service: etl
