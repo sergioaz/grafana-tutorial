@@ -30,6 +30,16 @@ For focused metrics monitoring without log aggregation:
 
 *Note: This excludes Promtail and Loki in favor of direct metrics collection.*
 
+### Pure ETL-Only Configuration (4 services) 🎯
+For focused ETL monitoring without any extra components:
+
+- **prometheus**: Metrics collection and storage
+- **grafana**: Visualization and dashboards
+- **etl-simulator**: ETL process simulation
+- **etl-metrics**: Direct metrics exporter for ETL data
+
+*Note: This completely excludes Go app, database, and log aggregation for the cleanest ETL monitoring experience.*
+
 ### Data Flow
 1. Go app serves HTTP requests and logs to `/var/log/tns-app.log`
 2. Prometheus scrapes app metrics every 5s from `app:80/metrics`
@@ -45,6 +55,9 @@ docker compose up -d
 
 # Start streamlined metrics-only stack (recommended for ETL focus)
 docker compose -f docker-compose-metrics.yml up -d
+
+# Start pure ETL-only stack (cleanest ETL monitoring, 4 services only)
+docker compose -f docker-compose-etl-only.yml up -d
 
 # Stop all services
 docker compose down
@@ -182,7 +195,13 @@ The system includes a complete ETL simulation and monitoring setup that demonstr
 
 ### ETL Management Commands
 ```bash
-# Streamlined approach (recommended) - use metrics-only stack
+# Pure ETL-only approach (cleanest, recommended) - 4 services total
+docker compose -f docker-compose-etl-only.yml up -d
+
+# Or use the dedicated ETL-only PowerShell script
+.\etl\start-etl-only-monitoring.ps1 -StartStack
+
+# Streamlined approach (with Go app/db) - use metrics-only stack
 docker compose -f docker-compose-metrics.yml up -d
 
 # Or use the PowerShell helper script
@@ -190,9 +209,6 @@ docker compose -f docker-compose-metrics.yml up -d
 
 # Start only ETL services (with default config)
 docker compose up -d etl-simulator etl-metrics
-
-# Start only ETL services (with streamlined config)
-docker compose -f docker-compose-metrics.yml up -d etl-simulator etl-metrics
 
 # View ETL logs
 docker compose logs -f etl-simulator
