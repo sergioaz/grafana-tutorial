@@ -8,6 +8,7 @@ This is a complete observability stack tutorial environment featuring a Go web a
 
 ## Architecture
 
+### Default Configuration (6 services)
 The system consists of 6 containerized services:
 
 - **app**: Go web application (Hacker News-like interface) exposing metrics on port 8081
@@ -16,6 +17,18 @@ The system consists of 6 containerized services:
 - **loki**: Log aggregation system on port 3100
 - **promtail**: Log collection agent that forwards logs to Loki
 - **grafana**: Visualization and dashboards on port 3000 (admin access enabled by default)
+
+### Streamlined Metrics-Only Configuration (6 services)
+For focused metrics monitoring without log aggregation:
+
+- **app**: Go web application with metrics exposure
+- **db**: Database service for application persistence
+- **prometheus**: Metrics collection and storage
+- **grafana**: Visualization and dashboards
+- **etl-simulator**: ETL process simulation
+- **etl-metrics**: Direct metrics exporter for ETL data
+
+*Note: This excludes Promtail and Loki in favor of direct metrics collection.*
 
 ### Data Flow
 1. Go app serves HTTP requests and logs to `/var/log/tns-app.log`
@@ -27,8 +40,11 @@ The system consists of 6 containerized services:
 
 ### Environment Setup
 ```bash
-# Start the complete observability stack
+# Start the complete observability stack (with log aggregation)
 docker compose up -d
+
+# Start streamlined metrics-only stack (recommended for ETL focus)
+docker compose -f docker-compose-metrics.yml up -d
 
 # Stop all services
 docker compose down
@@ -166,8 +182,17 @@ The system includes a complete ETL simulation and monitoring setup that demonstr
 
 ### ETL Management Commands
 ```bash
-# Start only ETL services
+# Streamlined approach (recommended) - use metrics-only stack
+docker compose -f docker-compose-metrics.yml up -d
+
+# Or use the PowerShell helper script
+.\etl\start-metrics-monitoring.ps1 -FullStack -UseStreamlinedConfig
+
+# Start only ETL services (with default config)
 docker compose up -d etl-simulator etl-metrics
+
+# Start only ETL services (with streamlined config)
+docker compose -f docker-compose-metrics.yml up -d etl-simulator etl-metrics
 
 # View ETL logs
 docker compose logs -f etl-simulator
