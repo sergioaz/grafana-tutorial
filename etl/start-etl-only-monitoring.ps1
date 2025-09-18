@@ -62,12 +62,12 @@ Set-Location $projectRoot
 
 Write-Host "📍 Project directory: $projectRoot" -ForegroundColor Yellow
 Write-Host "📋 Configuration: $composeFile" -ForegroundColor Cyan
-Write-Host "🔧 Services: Grafana + Prometheus + ETL Simulator + ETL Metrics (4 services total)" -ForegroundColor Gray
+Write-Host "Services: Grafana + Prometheus + ETL Simulator + ETL Metrics (4 services total)" -ForegroundColor Gray
 
 # Check if Docker is running
 try {
     docker version | Out-Null
-    Write-Host "✅ Docker is running" -ForegroundColor Green
+    Write-Host "Docker is running" -ForegroundColor Green
 } catch {
     Write-Host "❌ Docker is not running. Please start Docker Desktop." -ForegroundColor Red
     exit 1
@@ -83,7 +83,7 @@ if (-not (Test-Path $composeFile)) {
 Write-Host "🔧 Setting up ETL-only Prometheus configuration..." -ForegroundColor Blue
 if (Test-Path "prometheus/$prometheusConfig") {
     Copy-Item "prometheus/$prometheusConfig" "prometheus/prometheus.yml" -Force
-    Write-Host "✅ ETL-only Prometheus config activated" -ForegroundColor Green
+    Write-Host "ETL-only Prometheus config activated" -ForegroundColor Green
 } else {
     Write-Host "⚠️  ETL-only Prometheus config not found, using existing configuration" -ForegroundColor Yellow
 }
@@ -92,7 +92,7 @@ if (Test-Path "prometheus/$prometheusConfig") {
 Write-Host "🔧 Setting up ETL-only Grafana datasources..." -ForegroundColor Blue
 if (Test-Path "grafana/provisioning/datasources/datasources-metrics.yaml") {
     Copy-Item "grafana/provisioning/datasources/datasources-metrics.yaml" "grafana/provisioning/datasources/datasources.yaml" -Force
-    Write-Host "✅ ETL-only Grafana datasources activated" -ForegroundColor Green
+    Write-Host "ETL-only Grafana datasources activated" -ForegroundColor Green
 }
 
 if ($StartStack) {
@@ -103,7 +103,7 @@ if ($StartStack) {
     docker compose -f $composeFile up -d
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ ETL-only stack started successfully" -ForegroundColor Green
+        Write-Host "ETL-only stack started successfully" -ForegroundColor Green
     } else {
         Write-Host "❌ Failed to start ETL-only stack" -ForegroundColor Red
         exit 1
@@ -120,7 +120,7 @@ if ($StartStack) {
     docker compose -f $composeFile down
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ ETL-only stack stopped successfully" -ForegroundColor Green
+        Write-Host "ETL-only stack stopped successfully" -ForegroundColor Green
         return
     } else {
         Write-Host "❌ Failed to stop ETL-only stack" -ForegroundColor Red
@@ -134,7 +134,7 @@ if ($StartStack) {
     docker compose -f $composeFile restart etl-simulator etl-metrics
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ ETL components restarted successfully" -ForegroundColor Green
+        Write-Host "ETL components restarted successfully" -ForegroundColor Green
     } else {
         Write-Host "❌ Failed to restart ETL components" -ForegroundColor Red
         exit 1
@@ -157,7 +157,7 @@ Write-Host "🔍 Testing service endpoints..." -ForegroundColor Blue
 # Test Prometheus
 try {
     $prometheusResponse = Invoke-RestMethod -Uri "http://localhost:9090/-/healthy" -TimeoutSec 5
-    Write-Host "✅ Prometheus is healthy" -ForegroundColor Green
+    Write-Host "Prometheus is healthy" -ForegroundColor Green
 } catch {
     Write-Host "⚠️  Prometheus not responding (may still be starting)" -ForegroundColor Yellow
 }
@@ -165,7 +165,7 @@ try {
 # Test Grafana
 try {
     $grafanaResponse = Invoke-RestMethod -Uri "http://localhost:3000/api/health" -TimeoutSec 5
-    Write-Host "✅ Grafana is healthy" -ForegroundColor Green
+    Write-Host "Grafana is healthy" -ForegroundColor Green
 } catch {
     Write-Host "⚠️  Grafana not responding (may still be starting)" -ForegroundColor Yellow
 }
@@ -173,7 +173,7 @@ try {
 # Test ETL Health
 try {
     $healthResponse = Invoke-RestMethod -Uri "http://localhost:8083/health" -TimeoutSec 5
-    Write-Host "✅ ETL Health endpoint responding" -ForegroundColor Green
+    Write-Host "ETL Health endpoint responding" -ForegroundColor Green
     Write-Host "   Status: $($healthResponse.status)" -ForegroundColor Gray
     Write-Host "   Uptime: $([math]::Round($healthResponse.uptime, 2)) seconds" -ForegroundColor Gray
     Write-Host "   Total Records: $($healthResponse.total_records)" -ForegroundColor Gray
@@ -187,7 +187,7 @@ try {
 try {
     $metricsResponse = Invoke-RestMethod -Uri "http://localhost:8083/metrics" -TimeoutSec 5
     $etlMetrics = $metricsResponse -split "`n" | Where-Object { $_ -match "^etl_" -and $_ -notmatch "^#" }
-    Write-Host "✅ ETL Metrics endpoint responding with $($etlMetrics.Count) metrics" -ForegroundColor Green
+    Write-Host "ETL Metrics endpoint responding with $($etlMetrics.Count) metrics" -ForegroundColor Green
     
     if ($etlMetrics.Count -gt 0) {
         Write-Host "   Sample metrics:" -ForegroundColor Gray
@@ -205,10 +205,10 @@ try {
 try {
     $targetsResponse = Invoke-RestMethod -Uri "http://localhost:9090/api/v1/targets" -TimeoutSec 5
     $activeTargets = $targetsResponse.data.activeTargets | Where-Object { $_.health -eq "up" }
-    Write-Host "✅ Prometheus has $($activeTargets.Count) healthy targets" -ForegroundColor Green
+    Write-Host "Prometheus has $($activeTargets.Count) healthy targets" -ForegroundColor Green
     
     foreach ($target in $activeTargets) {
-        Write-Host "   ✓ $($target.job): $($target.scrapeUrl)" -ForegroundColor DarkGray
+        Write-Host "   $($target.job): $($target.scrapeUrl)" -ForegroundColor DarkGray
     }
 } catch {
     Write-Host "⚠️  Could not verify Prometheus targets" -ForegroundColor Yellow
@@ -241,8 +241,8 @@ Write-Host "   View metrics logs: docker compose -f $composeFile logs -f etl-met
 
 Write-Host "" -ForegroundColor White
 if ($StartStack) {
-    Write-Host "✨ Pure ETL-Only Monitoring Stack is ready!" -ForegroundColor Green
+    Write-Host "Pure ETL-Only Monitoring Stack is ready!" -ForegroundColor Green
     Write-Host "🎯 Focus: ETL process monitoring without any extra components" -ForegroundColor Cyan
 } elseif ($ShowStatus -or $RestartETL) {
-    Write-Host "📊 ETL-Only Stack Status Updated!" -ForegroundColor Green
+    Write-Host "ETL-Only Stack Status Updated!" -ForegroundColor Green
 }
