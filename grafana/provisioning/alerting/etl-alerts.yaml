@@ -5,7 +5,7 @@ groups:
     rules:
       - uid: etl_health_down
         title: ETL Process Health Check Failed
-        condition: A
+        condition: C
         data:
           - refId: A
             queryType: ''
@@ -17,6 +17,30 @@ groups:
               expr: etl_health_status
               interval: ''
               refId: A
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: "${B} < 1"
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: math
         noDataState: Alerting
         execErrState: Alerting
         for: 2m
@@ -28,9 +52,9 @@ groups:
           team: data-engineering
           service: etl
 
-      - uid: etl_no_success_10min
+      - uid: etl_no_success_10min_v2
         title: No ETL Success in 10 Minutes
-        condition: A
+        condition: C
         data:
           - refId: A
             queryType: ''
@@ -42,20 +66,44 @@ groups:
               expr: etl_seconds_since_last_success
               interval: ''
               refId: A
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: "${B} > 600"
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: math
         noDataState: Alerting
         execErrState: Alerting
         for: 1m
         annotations:
           summary: No successful ETL file processing in over 10 minutes
-          description: 'It has been {{ $value }} seconds since the last successful file processing. Expected frequency is approximately every 1-5 minutes.'
+          description: 'ETL has not successfully processed any files in over 10 minutes. Expected frequency is approximately every 1-5 minutes.'
         labels:
           severity: warning
           team: data-engineering
           service: etl
 
-      - uid: etl_high_failure_rate
+      - uid: etl_high_failure_rate_v2
         title: High ETL Failure Rate
-        condition: A
+        condition: C
         data:
           - refId: A
             queryType: ''
@@ -67,20 +115,44 @@ groups:
               expr: increase(etl_failures_total[5m])
               interval: ''
               refId: A
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: "${B} > 3"
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: math
         noDataState: NoData
         execErrState: Alerting
         for: 1m
         annotations:
           summary: High ETL failure rate detected
-          description: 'ETL process has had {{ $value }} failures in the last 5 minutes. Normal rate is approximately 1 failure per minute.'
+          description: 'ETL process has experienced an unusually high number of failures in the last 5 minutes. Normal rate is approximately 1 failure per minute.'
         labels:
           severity: warning
           team: data-engineering
           service: etl
 
-      - uid: etl_low_throughput
+      - uid: etl_low_throughput_v2
         title: ETL Processing Rate Below Threshold
-        condition: A
+        condition: C
         data:
           - refId: A
             queryType: ''
@@ -92,20 +164,44 @@ groups:
               expr: rate(etl_records_total[5m]) * 60
               interval: ''
               refId: A
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: "${B} < 100"
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: math
         noDataState: Alerting
         execErrState: Alerting
         for: 3m
         annotations:
           summary: ETL processing rate is below expected threshold
-          description: 'Current ETL processing rate is {{ $value }} records per minute. Expected rate is approximately 600 records per minute (10 records/sec).'
+          description: 'Current ETL processing rate has fallen below the expected threshold of 100 records per minute. Expected normal rate is approximately 600 records per minute.'
         labels:
           severity: warning
           team: data-engineering
           service: etl
 
-      - uid: etl_excessive_processing_time
+      - uid: etl_excessive_processing_time_v2
         title: ETL Average Processing Time Too High
-        condition: A
+        condition: C
         data:
           - refId: A
             queryType: ''
@@ -117,12 +213,36 @@ groups:
               expr: etl_avg_processing_time_seconds
               interval: ''
               refId: A
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: "${B} > 5"
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: math
         noDataState: NoData
         execErrState: Alerting
         for: 2m
         annotations:
           summary: ETL average processing time is unusually high
-          description: 'Current average processing time is {{ $value }} seconds per file. This may indicate performance issues or larger than normal files.'
+          description: 'ETL average processing time has exceeded 5 seconds per file, which may indicate performance issues or larger than normal files.'
         labels:
           severity: warning
           team: data-engineering
@@ -130,7 +250,7 @@ groups:
 
       - uid: etl_metrics_endpoint_down
         title: ETL Metrics Endpoint Unavailable
-        condition: A
+        condition: C
         data:
           - refId: A
             queryType: ''
@@ -142,6 +262,30 @@ groups:
               expr: up{job="etl_metrics"}
               interval: ''
               refId: A
+          - refId: B
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            queryType: ''
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              expression: "${B} < 1"
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: math
         noDataState: Alerting
         execErrState: Alerting
         for: 1m

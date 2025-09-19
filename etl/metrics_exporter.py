@@ -15,6 +15,7 @@ from collections import defaultdict, deque
 # import re
 import signal
 import sys
+import urllib.parse
 
 class ETLMetricsCollector:
     def __init__(self, log_file=None):
@@ -37,6 +38,8 @@ class ETLMetricsCollector:
             'last_successful_file': 0,
             'last_failure': 0
         }
+        # Store recent alerts for display
+        self.recent_alerts = deque(maxlen=50)  # Keep last 50 alerts
         self.running = False
         self.last_position = 0
         
@@ -240,6 +243,49 @@ class ETLMetricsCollector:
         metrics_output.append("")
         
         return "\n".join(metrics_output)
+    
+    def handle_alert(self, alert_data):
+        """Handle incoming webhook alert from Grafana"""
+        try:
+            # Add timestamp if not present
+            if 'timestamp' not in alert_data:
+                alert_data['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+            
+            # Store the alert
+            self.recent_alerts.append(alert_data)
+            
+            # Try to extract the custom JSON from the message field (Grafana format)
+            custom_alert = None
+            if 'message' in alert_data:
+                try:
+                    custom_alert = json.loads(alert_data['message'])
+                except json.JSONDecodeError:
+                    pass
+            
+            # Use custom alert data if available, otherwise use raw data
+            if custom_alert:
+                alert_name = custom_alert.get('alert_name', 'Unknown')
+                severity = custom_alert.get('severity', 'Unknown') 
+                status = custom_alert.get('status', 'Unknown')
+                summary = custom_alert.get('summary', 'No summary')
+                description = custom_alert.get('description', 'No description')
+            else:
+                # Fallback to direct fields (for manual testing)
+                alert_name = alert_data.get('alert_name', 'Unknown')
+                severity = alert_data.get('severity', 'Unknown') 
+                status = alert_data.get('status', 'Unknown')
+                summary = alert_data.get('summary', 'No summary')
+                description = alert_data.get('description', 'No description')
+            
+            # Log the alert
+            print(f"ALERT RECEIVED: {alert_name} - {severity} - {status}")
+            print(f"  - {summary}")
+            print(f"    {description}")
+            
+            return True
+        except Exception as e:
+            print(f"Error handling alert: {e}")
+            return False
 
 class MetricsHTTPHandler(BaseHTTPRequestHandler):
     def __init__(self, metrics_collector, *args, **kwargs):
@@ -270,6 +316,61 @@ class MetricsHTTPHandler(BaseHTTPRequestHandler):
             }
             
             self.wfile.write(json.dumps(health_data, indent=2).encode('utf-8'))
+            
+        elif self.path == '/alerts':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            alerts_data = {
+                'recent_alerts': list(self.metrics_collector.recent_alerts),
+                'alert_count': len(self.metrics_collector.recent_alerts)
+            }
+            
+            self.wfile.write(json.dumps(alerts_data, indent=2).encode('utf-8'))
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def do_POST(self):
+        if self.path == '/alerts':
+            try:
+                # Read the request body
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                
+                # Parse JSON data
+                alert_data = json.loads(post_data.decode('utf-8'))
+                
+                # Handle the alert
+                success = self.metrics_collector.handle_alert(alert_data)
+                
+                if success:
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    response = {'status': 'success', 'message': 'Alert received'}
+                    self.wfile.write(json.dumps(response).encode('utf-8'))
+                else:
+                    self.send_response(500)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    response = {'status': 'error', 'message': 'Failed to process alert'}
+                    self.wfile.write(json.dumps(response).encode('utf-8'))
+                    
+            except json.JSONDecodeError:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'error', 'message': 'Invalid JSON'}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+            except Exception as e:
+                print(f"Error handling POST request: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {'status': 'error', 'message': str(e)}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
         else:
             self.send_response(404)
             self.end_headers()
