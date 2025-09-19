@@ -14,3 +14,12 @@ datasources:
     type: testdata
     access: proxy
     orgId: 1
+  - name: PrometheusDirect
+    type: prometheus
+    access: proxy
+    orgId: 1
+    uid: prometheus_direct
+    url: http://host.docker.internal:8000
+    basicAuth: false
+    isDefault: false
+    editable: true

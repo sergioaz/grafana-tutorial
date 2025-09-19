@@ -1,7 +1,4 @@
 # .gitignore for grafana-tutorial project
-# Ignore docker-compose-etl-only.yml
-
-docker-compose-etl-only.yml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

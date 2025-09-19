@@ -1,0 +1,89 @@
+networks:
+  etl:
+
+volumes:
+  etl_logs: {}
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.49.0
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    ports:
+      - 9090:9090
+    networks:
+      - etl
+
+  grafana:
+    image: grafana/grafana:12.0.1
+    ports:
+      - 3000:3000
+    networks:
+      - etl
+    environment:
+      - GF_DEFAULT_APP_MODE=${GF_DEFAULT_APP_MODE}
+      - GF_LOG_LEVEL=${GF_LOG_LEVEL}
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=${GF_AUTH_ANONYMOUS_ORG_ROLE}
+      - GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED}
+      - GF_AUTH_BASIC_ENABLED=${GF_AUTH_BASIC_ENABLED}
+      - GF_SMTP_ENABLED=${GF_SMTP_ENABLED}
+      - GF_SMTP_HOST=${GF_SMTP_HOST}
+      - GF_SMTP_USER=${GF_SMTP_USER}
+      - GF_SMTP_PASSWORD=${GF_SMTP_PASSWORD}
+      - GF_SMTP_FROM_ADDRESS=${GF_SMTP_FROM_ADDRESS}
+      - GF_SMTP_FROM_NAME=${GF_SMTP_FROM_NAME}
+      - GF_SMTP_SKIP_VERIFY=${GF_SMTP_SKIP_VERIFY}
+      - GF_SMTP_STARTTLS_POLICY=${GF_SMTP_STARTTLS_POLICY}
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/provisioning/alerting:/etc/grafana/provisioning/alerting
+
+  etl-simulator:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile.etl
+    container_name: etl-simulator
+    networks:
+      - etl
+    volumes:
+      - etl_logs:/app/logs
+    working_dir: /app
+    command: python3 etl_simulator.py
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_FILE=/app/logs/etl_process.log
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import os; exit(0 if os.path.exists('/app/logs/etl_process.log') else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  etl-metrics:
+    build:
+      context: ./etl
+      dockerfile: Dockerfile.etl
+    container_name: etl-metrics
+    networks:
+      - etl
+    ports:
+      - "8083:8083"
+    volumes:
+      - etl_logs:/app/logs
+    working_dir: /app
+    command: python3 metrics_exporter.py
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_FILE=/app/logs/etl_process.log
+    depends_on:
+      - etl-simulator
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

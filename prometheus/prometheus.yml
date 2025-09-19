@@ -11,3 +11,9 @@ scrape_configs:
     scrape_interval: 10s
     static_configs:
       - targets: ["etl-metrics:8083"]
+      
+  - job_name: "etl_simulator_direct"
+    # ETL simulator running on host
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
