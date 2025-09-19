@@ -92,7 +92,7 @@
         {
           "expr": "rate(etl_records_total[5m]) * 60",
           "interval": "",
-          "legendFormat": "Records per minute",
+          "legendFormat": "Records per minute, average for last 5 minutes",
           "refId": "A"
         },
         {

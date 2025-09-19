@@ -6,16 +6,17 @@ Provides HTTP endpoint with metrics for Grafana monitoring
 
 import json
 import time
-# import threading
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict, deque
-# import re
 import signal
 import sys
-import urllib.parse
+
+# import threading
+# import re
+# import urllib.parse
 
 class ETLMetricsCollector:
     def __init__(self, log_file=None):
