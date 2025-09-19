@@ -43,8 +43,6 @@ The ETL system simulates a realistic data processing pipeline with:
 # Start complete monitoring stack + ETL
 .\etl\start-etl-monitoring.ps1 -FullStack
 
-# Start only ETL components (if monitoring is already running)
-.\etl\start-etl-monitoring.ps1 -ETLOnly
 ```
 
 ### Option 2: Manual Docker Compose
