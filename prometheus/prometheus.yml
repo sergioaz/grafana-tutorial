@@ -13,7 +13,10 @@ scrape_configs:
       - targets: ["etl-metrics:8083"]
       
   - job_name: "etl_simulator_direct"
-    # ETL simulator running on host
+    # ETL simulator running on host with Basic Auth
     scrape_interval: 10s
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/secrets/etl_password.txt
     static_configs:
       - targets: ["host.docker.internal:8000"]

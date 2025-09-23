@@ -80,4 +80,9 @@ Desktop.ini
 .env
 .env.*
 
+# Prometheus secrets and web config
+prometheus/secrets/
+prometheus/web.yml
+CREDENTIALS.md
+
 

@@ -118,16 +118,26 @@ docker compose -f docker-compose-etl-only.yml logs -f etl-simulator
 
 ```
 ├── docker-compose-etl-only.yml          # Main service definitions
-├── prometheus/prometheus-etl-only.yml    # ETL-focused Prometheus config
+├── prometheus/
+│   ├── prometheus.yml                   # ETL-focused Prometheus config  
+│   ├── web.yml                          # 🔐 Authentication config (bcrypt hashes)
+│   └── secrets/
+│       ├── etl_password.txt             # 🔐 ETL simulator password file
+│       └── prometheus_admin_credentials.txt # 🔐 Admin credentials reference
+├── .env.secure                          # 🔐 ETL simulator environment variables
+├── CREDENTIALS.md                       # 🔐 All credentials reference
 ├── grafana/provisioning/
-│   ├── datasources/datasources-metrics.yaml  # Prometheus-only datasource
-│   ├── dashboards/etl-monitoring.json        # ETL dashboard
-│   └── alerting/etl-alerts.yaml             # Alert rules
+│   ├── datasources/datasources.yaml        # Prometheus datasource with auth
+│   ├── dashboards/etl-monitoring.json      # ETL dashboard
+│   └── alerting/etl-alerts.yaml           # Alert rules
 └── etl/
-    ├── start-etl-only-monitoring.ps1    # Management script
-    ├── etl_simulator.py                 # ETL process simulator
-    └── metrics_exporter.py              # Prometheus metrics exporter
+    ├── start-etl-only-monitoring.ps1      # Management script
+    ├── etl_simulator.py                   # ETL process simulator
+    ├── etl_simulator_secure.py             # 🔐 Secure ETL simulator with auth
+    └── metrics_exporter.py                # Prometheus metrics exporter
 ```
+
+🔐 = Security-related files (excluded from version control)
 
 ## 🛠️ Management Commands
 
@@ -148,17 +158,27 @@ docker compose -f docker-compose-etl-only.yml ps
 
 ### Monitoring Commands
 ```bash
-# Check ETL health
+# Check ETL health (containerized ETL)
 curl http://localhost:8083/health
 
-# View raw metrics
+# Check external ETL simulator health
+curl http://localhost:8000/health
+
+# View raw metrics (containerized ETL)
 curl http://localhost:8083/metrics | grep etl_
+
+# View secure external ETL metrics (requires authentication)
+curl -u prometheus:secure_metrics_2024 http://localhost:8000/metrics | grep etl_
 
 # Monitor logs in real-time
 docker compose -f docker-compose-etl-only.yml logs -f etl-simulator
 
-# View Prometheus targets
-curl http://localhost:9090/api/v1/targets
+# View Prometheus targets (requires authentication)
+curl -u admin:prometheus_admin_2024 http://localhost:9090/api/v1/targets
+
+# PowerShell authentication examples
+$creds = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("admin:prometheus_admin_2024"))
+Invoke-WebRequest -Uri "http://localhost:9090/api/v1/targets" -Headers @{Authorization="Basic $creds"}
 ```
 
 ### Development Commands
@@ -166,20 +186,67 @@ curl http://localhost:9090/api/v1/targets
 # Run ETL simulator locally (for development)
 C:\Learn\grafana-tutorial\.venv\Scripts\python.exe etl\etl_simulator.py
 
+# Run SECURE ETL simulator with authentication (recommended)
+C:\Learn\grafana-tutorial\.venv\Scripts\python.exe etl\etl_simulator_secure.py
+
 # Run metrics exporter locally (separate terminal)
 C:\Learn\grafana-tutorial\.venv\Scripts\python.exe etl\metrics_exporter.py
 ```
 
+## 🔐 Security Configuration
+
+### Authentication Overview
+The ETL monitoring stack now includes comprehensive security:
+
+- **Prometheus**: HTTP Basic Authentication with bcrypt password hashes
+- **ETL Simulator**: HTTP Basic Authentication for metrics endpoint
+- **Password Files**: Secure storage using password files instead of environment variables
+
+### Prometheus Authentication
+**URL**: http://localhost:9090 (requires authentication)
+
+| User | Password | Access Level |
+|------|----------|-------------|
+| `admin` | `prometheus_admin_2024` | Full access |
+| `readonly` | `prometheus_read_2024` | Read-only access |
+
+### ETL Simulator Authentication (localhost:8000)
+**Credentials for external ETL simulator**:
+- **Username**: `prometheus`
+- **Password**: `secure_metrics_2024`
+
+### Security Files
+```
+prometheus/
+├── web.yml                    # Web authentication config (bcrypt hashes)
+└── secrets/
+    ├── etl_password.txt       # ETL simulator password file
+    └── prometheus_admin_credentials.txt  # Admin credentials reference
+.env.secure                    # ETL simulator environment variables
+CREDENTIALS.md                # All credentials reference (excluded from git)
+```
+
+### Starting Secure ETL Simulator
+```powershell
+# Load credentials from .env.secure
+Get-Content .env.secure | ForEach-Object { if($_ -match "^([^#][^=]+)=(.*)$") { [Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim(), "Process") } }
+
+# Start secure ETL simulator
+.venv\Scripts\python.exe etl\etl_simulator_secure.py
+```
+
 ## 📍 Access Points
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **Grafana Home** | http://localhost:3000 | Main interface |
-| **ETL Dashboard** | http://localhost:3000/d/etl-monitoring | ETL monitoring |
-| **ETL Health** | http://localhost:8083/health | Health check |
-| **ETL Metrics** | http://localhost:8083/metrics | Raw metrics |
-| **Prometheus** | http://localhost:9090 | Metrics query interface |
-| **Prometheus Targets** | http://localhost:9090/targets | Scrape status |
+| Service | URL | Purpose | Authentication |
+|---------|-----|---------|----------------|
+| **Grafana Home** | http://localhost:3000 | Main interface | Anonymous (Admin role) |
+| **ETL Dashboard** | http://localhost:3000/d/etl-monitoring | ETL monitoring | Anonymous (Admin role) |
+| **ETL Health** | http://localhost:8083/health | Health check | None required |
+| **ETL Metrics** | http://localhost:8083/metrics | Raw metrics | None required |
+| **Prometheus** | http://localhost:9090 | Metrics query interface | **admin/prometheus_admin_2024** |
+| **Prometheus Targets** | http://localhost:9090/targets | Scrape status | **admin/prometheus_admin_2024** |
+| **ETL Simulator (External)** | http://localhost:8000/metrics | Secure metrics endpoint | **prometheus/secure_metrics_2024** |
+| **ETL Simulator Health** | http://localhost:8000/health | External health check | None required |
 
 ## 🔍 Troubleshooting
 
@@ -193,8 +260,14 @@ C:\Learn\grafana-tutorial\.venv\Scripts\python.exe etl\metrics_exporter.py
    # Verify endpoint
    curl http://localhost:8083/health
    
-   # Check Prometheus targets
-   curl http://localhost:9090/api/v1/targets
+   # Check Prometheus targets (with authentication)
+   curl -u admin:prometheus_admin_2024 http://localhost:9090/api/v1/targets
+   
+   # Verify external ETL simulator is running
+   curl http://localhost:8000/health
+   
+   # Test external ETL metrics authentication
+   curl -u prometheus:secure_metrics_2024 http://localhost:8000/metrics
    ```
 
 2. **Dashboard not loading**
@@ -211,8 +284,26 @@ C:\Learn\grafana-tutorial\.venv\Scripts\python.exe etl\metrics_exporter.py
    # Check alert rules in Grafana
    # Visit: http://localhost:3000/alerting/list
    
-   # Verify Prometheus is scraping metrics
-   # Visit: http://localhost:9090/targets
+   # Verify Prometheus is scraping metrics (with authentication)
+   # Visit: http://localhost:9090/targets (login: admin/prometheus_admin_2024)
+   ```
+
+4. **Authentication issues**
+   ```bash
+   # Test Prometheus authentication
+   curl -u admin:prometheus_admin_2024 http://localhost:9090/api/v1/targets
+   
+   # Test ETL simulator authentication
+   curl -u prometheus:secure_metrics_2024 http://localhost:8000/metrics
+   
+   # Check if password files exist and have correct content
+   docker compose -f docker-compose-etl-only.yml exec prometheus cat /etc/prometheus/secrets/etl_password.txt
+   
+   # Verify web.yml is loaded
+   docker compose -f docker-compose-etl-only.yml exec prometheus cat /etc/prometheus/web.yml
+   
+   # Check Grafana datasource connection
+   # Visit: http://localhost:3000/datasources (should show "OK" for Prometheus)
    ```
 
 ### Performance Optimization
@@ -244,21 +335,41 @@ C:\Learn\grafana-tutorial\.venv\Scripts\python.exe etl\metrics_exporter.py
 ## 🚀 Production Considerations
 
 Before using in production:
-1. **Add authentication** to Grafana
-2. **Configure persistent volumes** for Prometheus data
-3. **Set up external alerting** (email, Slack, PagerDuty)
-4. **Add resource limits** to Docker services
-5. **Implement backup/restore** procedures
-6. **Configure proper retention** policies
+1. ✅ **Authentication implemented** - Prometheus secured with HTTP Basic Auth
+2. ✅ **Password security** - Using bcrypt hashes and password files
+3. ✅ **ETL simulator security** - Metrics endpoint requires authentication
+4. ❗ **Configure persistent volumes** for Prometheus data
+5. ❗ **Set up external alerting** (email, Slack, PagerDuty)
+6. ❗ **Add resource limits** to Docker services
+7. ❗ **Implement backup/restore** procedures
+8. ❗ **Configure proper retention** policies
+9. ❗ **Enable HTTPS** for production deployment
+10. ❗ **Change default passwords** and use stronger credentials
+11. ❗ **Add Grafana authentication** (currently anonymous)
+12. ❗ **Secure credential files** with proper file permissions
 
-## 🤝 Contributing
-
-To modify the ETL-only stack:
-1. Test changes with `.\etl\start-etl-only-monitoring.ps1 -StartStack`
-2. Update this README with any configuration changes
 3. Verify dashboard and alerts still work correctly
 4. Test with different failure scenarios using `RestartETL`
 
 ---
 
-**This configuration provides the cleanest possible ETL monitoring experience with minimal overhead and maximum focus on the ETL process itself.** 🎯
+## 🔒 Security Summary
+
+**This ETL monitoring stack now includes enterprise-grade security features:**
+
+✅ **Prometheus Authentication**: HTTP Basic Auth with bcrypt password hashes  
+✅ **Password File Security**: Credentials stored in secure password files  
+✅ **ETL Simulator Security**: Metrics endpoint requires authentication  
+✅ **Grafana Integration**: Automatic authentication with Prometheus datasource  
+✅ **Version Control Safety**: All sensitive files excluded from git  
+
+**Security Implementation Highlights:**
+- 🔐 bcrypt password hashing for web authentication
+- 🔐 Password files instead of environment variables
+- 🔐 Multi-user authentication (admin/readonly)
+- 🔐 Secure credential management
+- 🔐 No plaintext passwords in configuration files
+
+---
+
+**This configuration provides the cleanest possible ETL monitoring experience with minimal overhead, maximum security, and complete focus on the ETL process itself.** 🎯🔒

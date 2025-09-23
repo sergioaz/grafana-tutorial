@@ -7,7 +7,10 @@ datasources:
     orgId: 1
     uid: prometheus
     url: http://prometheus:9090
-    basicAuth: false
+    basicAuth: true
+    basicAuthUser: admin
+    secureJsonData:
+      basicAuthPassword: ${PROMETHEUS_ADMIN_PASSWORD}
     isDefault: true
     editable: true
   - name: TestData
