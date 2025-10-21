@@ -6,18 +6,19 @@ Simulates file processing with controlled failure rates
 Processes approximately 20 records per second with failures every ~120 seconds
 """
 
-import time
-import random
-import logging
 import json
+import logging
 import os
-from datetime import datetime
-from pathlib import Path
+import random
 import signal
 import sys
+import time
+from datetime import datetime
+from pathlib import Path
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
-import prometheus_client
+
+# import prometheus_client
 
 # Prometheus metrics
 FILES_PROCESSED = Counter('etl_files_processed_total', 'Total processed files', ['status'])
